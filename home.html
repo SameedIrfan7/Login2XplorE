@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Shipping Management Form</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Shipping Manager</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">Home</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <header class="text-center text-white mb-4">
+            <h1>Shipping Management Form</h1>
+            <p>Enter the shipping details below</p>
+        </header>
+
+        <form id="shippingForm">
+            <div class="mb-3">
+                <label for="shipid" class="form-label">Shipping ID</label>
+                <input type="text" id="shipid" class="form-control" onchange="getShip()" required>
+            </div>
+            <div class="mb-3">
+                <label for="shipname" class="form-label">Shipping Name</label>
+                <input type="text" id="shipname" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label for="receiver" class="form-label">Receiver</label>
+                <input type="text" id="receiver" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label for="shipDate" class="form-label">Shipping Date</label>
+                <input type="date" id="shipDate" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label for="deliveryDate" class="form-label">Delivery Date</label>
+                <input type="date" id="deliveryDate" class="form-control" required>
+            </div>
+            <div class="text-center">
+                <button type="button" class="btn btn-primary" id="save" onclick="saveData()" disabled>Save</button>
+                <button type="button" class="btn btn-warning" id="change" onclick="changeData()" disabled>Update</button>
+                <button type="button" class="btn btn-danger" id="reset" onclick="resetForm()" disabled>Reset</button>
+            </div>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const jpdBaseURL = "http://api.login2explore.com:5577";
+        const jpdbIRL = "/api/irl";
+        const jpdbIML = "/api/iml";
+        const Prodbname = "Pro-table";
+        const ProRelationName = "Shipping-db";
+        const connToken = "90932048|-31949219947256871|90962344";
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initial button states
+            document.getElementById("save").disabled = true;
+            document.getElementById("change").disabled = true;
+            document.getElementById("reset").disabled = true;
+
+            document.getElementById('shipid').focus();
+
+            document.getElementById("save").addEventListener('click', saveData);
+            document.getElementById("change").addEventListener('click', changeData);
+            document.getElementById("reset").addEventListener('click', resetForm);
+
+            document.getElementById("shipid").addEventListener('change', getShip);
+        });
+
+        function saveData() {
+            const jsonData = validateData();
+            if (jsonData === '') return;
+
+            const postRequest = createPOSTRequest(connToken, jsonData, Prodbname, ProRelationName);
+            executeCommandAtGivenBaseUrl(postRequest, jpdBaseURL, jpdbIML);
+
+            resetForm();
+            document.getElementById('shipid').focus();
+        }
+
+        function changeData() {
+            document.getElementById("change").disabled = true;
+            const jsonData = validateData();
+            if (jsonData === '') return;
+
+            const updateRequest = createUPDATERecordRequest(connToken, jsonData, Prodbname, ProRelationName, document.getElementById("shipid").value);
+            executeCommandAtGivenBaseUrl(updateRequest, jpdBaseURL, jpdbIML);
+
+            resetForm();
+            document.getElementById('shipid').focus();
+        }
+
+        function resetForm() {
+            // Reset all fields
+            document.getElementById("shipid").value = "";
+            document.getElementById("shipname").value = "";
+            document.getElementById("receiver").value = "";
+            document.getElementById("shipDate").value = "";
+            document.getElementById("deliveryDate").value = "";
+
+            // Reset button states
+            document.getElementById("shipid").disabled = false;
+            document.getElementById("save").disabled = true;
+            document.getElementById("change").disabled = true;
+            document.getElementById("reset").disabled = true;
+
+            document.getElementById("shipid").focus();
+        }
+
+        function validateData() {
+            const shipid = document.getElementById("shipid").value;
+            const shipname = document.getElementById("shipname").value;
+            const receiver = document.getElementById("receiver").value;
+            const shipDate = document.getElementById("shipDate").value;
+            const deliveryDate = document.getElementById("deliveryDate").value;
+
+            // Validate all fields
+            if (shipid === "") {
+                alert("Shipping ID is required.");
+                document.getElementById("shipid").focus();
+                return "";
+            }
+            if (shipname === "") {
+                alert("Shipping name is required.");
+                document.getElementById("shipname").focus();
+                return "";
+            }
+            if (receiver === "") {
+                alert("Receiver is required.");
+                document.getElementById("receiver").focus();
+                return "";
+            }
+            if (shipDate === "") {
+                alert("Shipping Date is required.");
+                document.getElementById("shipDate").focus();
+                return "";
+            }
+            if (deliveryDate === "") {
+                alert("Delivery Date is required.");
+                document.getElementById("deliveryDate").focus();
+                return "";
+            }
+
+            return JSON.stringify({
+                id: shipid,
+                shipname: shipname,
+                receiver: receiver,
+                shipDate: shipDate,
+                deliveryDate: deliveryDate,
+            });
+        }
+
+        function executeCommandAtGivenBaseUrl(request, baseUrl, endpoint) {
+            fetch(baseUrl + endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(request),
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Handle the response data
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        function getShipIdAsJsonObj() {
+            const shipid = document.getElementById('shipid').value;
+            return JSON.stringify({ id: shipid });
+        }
+
+        function getShip() {
+            const shipidJsonObj = getShipIdAsJsonObj();
+            const getRequest = createGET_BY_KEYRequest(connToken, Prodbname, ProRelationName, shipidJsonObj);
+
+            fetch(jpdBaseURL + jpdbIRL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: getRequest
+            })
+            .then(response => {
+                return response.json();
+            })
+            .then(resJsonObj => {
+                if (resJsonObj.status === 400) {
+                    document.getElementById("save").disabled = false;
+                    document.getElementById("reset").disabled = false;
+                    document.getElementById("shipname").focus();
+                } else if (resJsonObj.status === 200) {
+                    document.getElementById("shipid").disabled = true;
+                    fillData(resJsonObj);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        function fillData(jsonObj) {
+            const record = JSON.parse(jsonObj.data).record;
+            document.getElementById("shipname").value = record.shipname;
+            document.getElementById("receiver").value = record.receiver;
+            document.getElementById("shipDate").value = record.shipDate;
+            document.getElementById("deliveryDate").value = record.deliveryDate;
+
+            // Enable buttons based on the state
+            document.getElementById("change").disabled = false;
+            document.getElementById("reset").disabled = false;
+        }
+
+        // Placeholder functions for creating requests
+        function createPOSTRequest(token, jsonData, dbName, relName) {
+            return {
+                token: token,
+                cmd: "POST",
+                dbName: dbName,
+                relName: relName,
+                jsonStr: jsonData
+            };
+        }
+
+        function createUPDATERecordRequest(token, jsonData, dbName, relName, recordId) {
+            return {
+                token: token,
+                cmd: "UPDATE",
+                dbName: dbName,
+                relName: relName,
+                jsonStr: jsonData,
+                recordId: recordId
+            };
+        }
+
+        function createGET_BY_KEYRequest(token, dbName, relName, jsonStr) {
+            return {
+                token: token,
+                cmd: "GET_BY_KEY",
+                dbName: dbName,
+                relName: relName,
+                jsonStr: jsonStr
+            };
+        }
+    </script>
+</body>
+</html>
